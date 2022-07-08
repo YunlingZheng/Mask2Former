@@ -194,8 +194,19 @@ class MaskFormer(nn.Module):
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
         images = ImageList.from_tensors(images, self.size_divisibility)
 
-        features = self.backbone(images.tensor)
-        outputs = self.sem_seg_head(features)
+        # ======================= faster seg as backbone =======================
+        # features = self.backbone(images.tensor)
+        # outputs = self.sem_seg_head(features)
+        # ============================ origin above ============================
+        # faster seg backbone
+        if self.training:
+            pred8, pred16, pred32, embd, features4, features_sem = self.backbone(images.tensor)
+        else:
+            pred8, embd, features4, features_sem = self.backbone(images.tensor)
+
+        # transformer decoder of mask2former
+        outputs = self.sem_seg_head(features_sem, embd, features4)
+        # ============================ update above ============================
 
         if self.training:
             # mask classification target

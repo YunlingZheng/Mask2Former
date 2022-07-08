@@ -360,7 +360,10 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
 
         return ret
 
-    def forward(self, x, mask_features, mask = None):
+    # ========================== transformer decoder ===========================
+    # add input variable 'features_sem' in forward()
+    def forward(self, features_sem, x, mask_features, mask = None):
+    # ============================== update above ==============================
         # x is a list of multi-scale feature
         assert len(x) == self.num_feature_levels
         src = []
@@ -392,6 +395,13 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
         outputs_class, outputs_mask, attn_mask = self.forward_prediction_heads(output, mask_features, attn_mask_target_size=size_list[0])
         predictions_class.append(outputs_class)
         predictions_mask.append(outputs_mask)
+
+        # ======================== transformer decoder =========================
+        # generate attn_mask by semantic mask feature from backbone instead of mask_features
+        # operation the same as forward_prediction_heads()
+        pred_sem = F.interpolate(features_sem, size=size_list[(i + 1) % self.num_feature_levels], mode="bilinear", align_corners=False)        
+        attn_mask = (pred_sem.sigmoid().flatten(2).unsqueeze(1).repeat(1, self.num_heads, 1, 1).flatten(0, 1) < 0.5).bool()
+        # ============================ update above ============================
 
         for i in range(self.num_layers):
             level_index = i % self.num_feature_levels

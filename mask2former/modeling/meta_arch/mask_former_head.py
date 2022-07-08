@@ -79,6 +79,7 @@ class MaskFormerHead(nn.Module):
         self.loss_weight = loss_weight
 
         self.pixel_decoder = pixel_decoder
+        # call transformer_decoder (mask2former decoder) by predictor()
         self.predictor = transformer_predictor
         self.transformer_in_feature = transformer_in_feature
 
@@ -112,19 +113,31 @@ class MaskFormerHead(nn.Module):
             ),
         }
 
-    def forward(self, features, mask=None):
-        return self.layers(features, mask)
+    # ========================== transformer decoder ===========================
+    # add input variable 'features_sem' 'embd' in forward() and layers()
+    def forward(self, features_sem, embd, features, mask=None):
+        return self.layers(features_sem, embd, features, mask)
 
-    def layers(self, features, mask=None):
-        mask_features, transformer_encoder_features, multi_scale_features = self.pixel_decoder.forward_features(features)
+    def layers(self, features_sem, embd, features, mask=None):
+        # mask_features, transformer_encoder_features, multi_scale_features = self.pixel_decoder.forward_features(features)
+        # ============================ origin above ============================
+        mask_features = features
+        multi_scale_features = embd
+        # ============================ update above ============================
+
         if self.transformer_in_feature == "multi_scale_pixel_decoder":
-            predictions = self.predictor(multi_scale_features, mask_features, mask)
+            # predictions = self.predictor(multi_scale_features, mask_features, mask)
+            # ========================== origin above ==========================
+            predictions = self.predictor(features_sem, multi_scale_features, mask_features, mask)
+            # ========================== update above ==========================
         else:
             if self.transformer_in_feature == "transformer_encoder":
-                assert (
-                    transformer_encoder_features is not None
-                ), "Please use the TransformerEncoderPixelDecoder."
-                predictions = self.predictor(transformer_encoder_features, mask_features, mask)
+                # assert (
+                #     transformer_encoder_features is not None
+                # ), "Please use the TransformerEncoderPixelDecoder."
+                # predictions = self.predictor(transformer_encoder_features, mask_features, mask)
+                pass
+                # ======================== update above ========================
             elif self.transformer_in_feature == "pixel_embedding":
                 predictions = self.predictor(mask_features, mask_features, mask)
             else:

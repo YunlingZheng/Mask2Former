@@ -673,6 +673,7 @@ class SwinTransformer(nn.Module):
                 x_out = norm_layer(x_out)
 
                 out = x_out.view(-1, H, W, self.num_features[i]).permute(0, 3, 1, 2).contiguous()
+                # 20220509, output of the backbone
                 outs["res{}".format(i + 2)] = out
 
         return outs
