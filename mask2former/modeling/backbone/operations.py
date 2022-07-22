@@ -22,12 +22,12 @@ add_path(osp.join(C.root_dir, 'tools'))
 
 # 20220511, adjust operations.py as backbone
 try:
-    from darts_utils import compute_latency_ms_tensorrt as compute_latency
+    from .darts_utils import compute_latency_ms_tensorrt as compute_latency
     print("use TensorRT for latency test")
 except:
-    from darts_utils import compute_latency_ms_pytorch as compute_latency
+    from .darts_utils import compute_latency_ms_pytorch as compute_latency
     print("use PyTorch for latency test")
-from slimmable_ops import USConv2d, USBatchNorm2d
+from .slimmable_ops import USConv2d, USBatchNorm2d
 # ================================ update above ================================
 
 

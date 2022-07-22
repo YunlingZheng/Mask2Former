@@ -6,7 +6,7 @@ import shutil
 from torch.autograd import Variable
 import time
 from tqdm import tqdm
-from genotypes import PRIMITIVES
+from .genotypes import PRIMITIVES
 import matplotlib
 # Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')

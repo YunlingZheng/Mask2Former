@@ -2,14 +2,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-from operations import *
-from genotypes import PRIMITIVES
+from .operations import *
+from .genotypes import PRIMITIVES
 from pdb import set_trace as bp
-from seg_oprs import FeatureFusion, Head
+from .seg_oprs import FeatureFusion, Head
 
 # 20220510, adjust model_seg.py as backbone loading fasterseg
 import os
-from darts_utils import create_exp_dir, save, plot_op, plot_path_width, objective_acc_lat
+from .darts_utils import create_exp_dir, save, plot_op, plot_path_width, objective_acc_lat
 from detectron2.modeling import BACKBONE_REGISTRY, Backbone, ShapeSpec
 # ================================ update above ================================
 
@@ -404,23 +404,27 @@ class Network_Multi_Path_Infer(nn.Module):
                     elif scale == 32: outputs32[branch] = output
         
         if self.training:
-############################ load fasterseg backbone ############################ 20220512
+        # ================= 20220512, load fasterseg backbone ==================
             # for i in range(len(outputs8)): # (32, 64, 128), (64, 64, 128) 20220511
             #     print("output shape:", outputs8[i].shape)
             # for i in range(len(outputs16)): # (64, 32, 64), (64, 64, 128) 20220511
                 # print("output shape:", outputs16[i].shape)
             # for i in range(len(outputs32)): # (256, 16, 32), (64, 64, 128) 20220511
                 # print("output shape:", outputs32[i].shape)
+            # add embd, features4, features_sem output
             pred8, pred16, pred32, embd, features4, features_sem = self.agg_ffm(outputs8, outputs16, outputs32)
             pred8 = F.interpolate(pred8, scale_factor=8, mode='bilinear', align_corners=True)
             if pred16 is not None: pred16 = F.interpolate(pred16, scale_factor=16, mode='bilinear', align_corners=True)
             if pred32 is not None: pred32 = F.interpolate(pred32, scale_factor=32, mode='bilinear', align_corners=True)
+            # return additional embd, features4, features_sem features
             return pred8, pred16, pred32, embd, features4, features_sem # (4, 19, 512, 1024) 20220511
         else:
+            # add embd, features4, features_sem output
             pred8, embd, features4, features_sem = self.agg_ffm(outputs8, outputs16, outputs32)
             out = F.interpolate(pred8, size=(int(pred8.size(2))*8, int(pred8.size(3))*8), mode='bilinear', align_corners=True)
+            # return additional embd, features4, features_sem features
             return out, embd, features4, features_sem
-############################ load fasterseg backbone ############################
+        # ============================ update above ============================
 
     def forward_latency(self, size):
         _, H, W = size
@@ -430,6 +434,7 @@ class Network_Multi_Path_Infer(nn.Module):
         latency, size = self.stem[2].forward_latency(size); latency_total += latency
 
         # store the last feature map w. corresponding scale of each branch
+        outputs4 = [size] * self._branch
         outputs8 = [size] * self._branch
         outputs16 = [size] * self._branch
         outputs32 = [size] * self._branch
@@ -463,15 +468,15 @@ class Network_Multi_Path_Infer(nn.Module):
         latency, size = self.ffm.forward_latency((out_size[0]*self._branch, out_size[1], out_size[2])); latency_total += latency
         latency, size = self.heads8.forward_latency(size); latency_total += latency
         return latency_total, size
-    
-############################ load fasterseg backbone ############################ 20220510
+
+
+# =================== 20220510, register faster seg backbone ===================
 @BACKBONE_REGISTRY.register()
 class D2Faster(Network_Multi_Path_Infer, Backbone):
     def __init__(self, cfg, input_shape):      
 
-############################ load fasterseg backbone ############################ 20220511
-        # faster backbone
-        LOAD_PATH = "/home/macho/Mask2Former/search-224x448_F12.L16_batch5-20200802-144323"
+        # ========= 20220511, load fasterseg backbone config directory =========
+        LOAD_PATH = "/home/faster/Downloads/Mask2Former/search-224x448_F12.L16_batch5-20200802-144323"
         arch_idx = 1 # the idx for the student network
         state = torch.load(os.path.join(LOAD_PATH, "arch_%d.pt"%arch_idx))
         
@@ -483,7 +488,7 @@ class D2Faster(Network_Multi_Path_Infer, Backbone):
         Fch = 12
         width_mult_list = [4./12, 6./12, 8./12, 10./12, 1.,]
         stem_head_width = (8./12, 8./12)
-############################ load fasterseg backbone ############################
+        # ============================ update above ============================
 
         super().__init__(
             alphas,
@@ -502,15 +507,15 @@ class D2Faster(Network_Multi_Path_Infer, Backbone):
         else: last = [2, 1]
         self.build_structure(last)
 
-############################ load fasterseg pretrained ############################ 20220514
-        path = "/home/macho/Mask2Former/train-512x1024_student_batch12-20210613-170252"
+        # ============= 20220514, load fasterseg pretrained model ==============
+        path = "/home/faster/Downloads/Mask2Former/train-512x1024_student_batch12-20210613-170252"
         partial = torch.load(os.path.join(path, "weights1.pt"))
         state = self.state_dict()
         pretrained_dict = {k: v for k, v in partial.items() if k in state}
         state.update(pretrained_dict)
         print("Loading the pretrained model!")
         self.load_state_dict(state)
-############################ load fasterseg pretrained ############################
+        # ============================ update above ============================
 
         self._out_features = cfg.MODEL.SWIN.OUT_FEATURES
 

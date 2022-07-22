@@ -51,3 +51,6 @@ _darcs
 /projects/*/datasets
 /models
 /snippet
+
+# datasets soft link
+datasets
