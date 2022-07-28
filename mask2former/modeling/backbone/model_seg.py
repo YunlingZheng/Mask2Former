@@ -13,6 +13,8 @@ from .darts_utils import create_exp_dir, save, plot_op, plot_path_width, objecti
 from detectron2.modeling import BACKBONE_REGISTRY, Backbone, ShapeSpec
 # ================================ update above ================================
 
+from pathlib import Path
+
 BatchNorm2d = nn.BatchNorm2d
 
 def softmax(x):
@@ -332,6 +334,7 @@ class Network_Multi_Path_Infer(nn.Module):
                 out = F.interpolate(out, size=(int(out.size(2))*2, int(out.size(3))*2), mode='bilinear', align_corners=True)
                 out = self.refines32[1](torch.cat([out, outputs8[branch]], dim=1))
                 pred8.append(out)
+                torch.save(out, self.path_mask+'/last_3_b1.pt')
             elif last == 1:
                 pred16.append(outputs16[branch]) ### 20220512
                 out = self.arms16(outputs16[branch])
@@ -340,6 +343,7 @@ class Network_Multi_Path_Infer(nn.Module):
                 pred8.append(out)
             elif last == 0:
                 pred8.append(outputs8[branch])
+                torch.save(outputs8[branch], self.path_mask+'/last_3_b2.pt')
         # for i in range(len(pred8)):
         #     print("pred8 shape:", pred8[i].shape) # (64, 64, 128), (64, 64, 128) 20220512
         # for i in range(len(pred16)):
@@ -371,11 +375,13 @@ class Network_Multi_Path_Infer(nn.Module):
 ############################ load fasterseg backbone ############################ 20220512
         # pred8 = self.heads8(self.ffm(torch.cat(pred8, dim=1)))
         pred8 = self.ffm(torch.cat(pred8, dim=1))
+        torch.save(pred8, self.path_mask+'/last_2.pt')
         features_sem = self.sem8(pred8)
         features4 = self.instance4(pred8)
         features4 = F.interpolate(features4, scale_factor=2, mode='bilinear', align_corners=True)
         # print("shape of features4:", features4.shape)
         pred8 = self.heads8(pred8)
+        torch.save(pred8, self.path_mask+'/last_1.pt')
         if self.training: 
             return pred8, pred16, pred32, embd, features4, features_sem
         else:
@@ -386,6 +392,8 @@ class Network_Multi_Path_Infer(nn.Module):
         _, _, H, W = input.size()
         stem = self.stem(input)
 
+        paths = sorted(Path('mask_feature_plot').iterdir(), key=os.path.getmtime)
+        self.path_mask = paths[-1]._str
         # store the last feature map w. corresponding scale of each branch
         outputs8 = [stem] * self._branch
         outputs16 = [stem] * self._branch
@@ -403,6 +411,7 @@ class Network_Multi_Path_Infer(nn.Module):
                     elif scale == 16: outputs16[branch] = output
                     elif scale == 32: outputs32[branch] = output
         
+        torch.save(outputs8, self.path_mask+'/last_4.pt')
         if self.training:
         # ================= 20220512, load fasterseg backbone ==================
             # for i in range(len(outputs8)): # (32, 64, 128), (64, 64, 128) 20220511

@@ -16,6 +16,7 @@ from detectron2.utils.memory import retry_if_cuda_oom
 from .modeling.criterion import SetCriterion
 from .modeling.matcher import HungarianMatcher
 
+from pathlib import Path
 
 @META_ARCH_REGISTRY.register()
 class MaskFormer(nn.Module):
@@ -194,6 +195,9 @@ class MaskFormer(nn.Module):
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
         images = ImageList.from_tensors(images, self.size_divisibility)
 
+        mask_path = r'mask_feature_plot/{}'.format(batched_inputs[0]['image_id'])
+        Path(mask_path).mkdir(parents=True, exist_ok=True)
+        torch.save(batched_inputs[0]['image'], mask_path+'/image.pt')
         # ======================= faster seg as backbone =======================
         # features = self.backbone(images.tensor)
         # outputs = self.sem_seg_head(features)
