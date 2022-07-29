@@ -257,7 +257,7 @@ class Network_Multi_Path_Infer(nn.Module):
             self.embd16 = nn.Conv2d(self.num_filters(16, self._stem_head_width[1]), self.dim, kernel_size=1, stride=1, padding=0)
         self.embd8 = nn.Conv2d(self.num_filters(8, self._stem_head_width[1]) * self._branch, self.dim, kernel_size=1, stride=1, padding=0)
         self.instance4 = Head(self.num_filters(8, self._stem_head_width[1]) * self._branch, self.dim, Fch=self._Fch, scale=4, branch=self._branch, is_aux=False, norm_layer=BatchNorm2d)
-        self.sem8 = Head(self.num_filters(8, self._stem_head_width[1]) * self._branch, 100, Fch=self._Fch, scale=4, branch=self._branch, is_aux=False, norm_layer=BatchNorm2d)
+        self.sem8 = Head(self.num_filters(8, self._stem_head_width[1]), 100, Fch=self._Fch, scale=4, branch=self._branch, is_aux=False, norm_layer=BatchNorm2d)
         # ============================ update above ============================
 
 
@@ -323,21 +323,23 @@ class Network_Multi_Path_Infer(nn.Module):
         for branch in range(self._branch):
             last = self.lasts[branch]
             if last == 2:
-                pred32.append(outputs32[branch]) ### 20220512
-                out = self.arms32[0](outputs32[branch])
-                out = F.interpolate(out, size=(int(out.size(2))*2, int(out.size(3))*2), mode='bilinear', align_corners=True)
-                out = self.refines32[0](torch.cat([out, outputs16[branch]], dim=1))
-                pred16.append(outputs16[branch]) ### 20220512
-                out = self.arms32[1](out)
-                out = F.interpolate(out, size=(int(out.size(2))*2, int(out.size(3))*2), mode='bilinear', align_corners=True)
-                out = self.refines32[1](torch.cat([out, outputs8[branch]], dim=1))
+                out = self.arms32[0](outputs32[branch])    # [256->128, 25, 38]
+                out = F.interpolate(out, size=(int(out.size(2))*2, int(out.size(3))*2), mode='bilinear', align_corners=True)  # [128,25->50,38->76]
+                out = self.refines32[0](torch.cat([out, outputs16[branch]], dim=1))    # [128,50,76]
+                out = self.arms32[1](out)    # [128->64,50,76]
+                out = F.interpolate(out, size=(int(out.size(2))*2, int(out.size(3))*2), mode='bilinear', align_corners=True)  # [64,50->100,76->152]
+                out = self.refines32[1](torch.cat([out, outputs8[branch]], dim=1))    # [64,100,152]
+                # output semantic mask feature here as out
+                features_sem = self.sem8(out)    # torch.Size([1, 64, 100, 152])
                 pred8.append(out)
-            elif last == 1:
                 pred16.append(outputs16[branch]) ### 20220512
+                pred32.append(outputs32[branch]) ### 20220512
+            elif last == 1:
                 out = self.arms16(outputs16[branch])
                 out = F.interpolate(out, size=(int(out.size(2))*2, int(out.size(3))*2), mode='bilinear', align_corners=True)
                 out = self.refines16(torch.cat([out, outputs8[branch]], dim=1))
                 pred8.append(out)
+                pred16.append(outputs16[branch]) ### 20220512
             elif last == 0:
                 pred8.append(outputs8[branch])
         # for i in range(len(pred8)):
@@ -371,7 +373,8 @@ class Network_Multi_Path_Infer(nn.Module):
 ############################ load fasterseg backbone ############################ 20220512
         # pred8 = self.heads8(self.ffm(torch.cat(pred8, dim=1)))
         pred8 = self.ffm(torch.cat(pred8, dim=1))
-        features_sem = self.sem8(pred8)
+        # output instance feature mask as pred8
+        # features_sem = self.sem8(pred8)
         features4 = self.instance4(pred8)
         features4 = F.interpolate(features4, scale_factor=2, mode='bilinear', align_corners=True)
         # print("shape of features4:", features4.shape)

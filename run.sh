@@ -1,2 +1,1 @@
-python train_net.py --num-gpus 1 \
-  --config-file configs/coco/instance-segmentation/swin/maskformer2_faster.yaml
+python train_net.py --num-gpus 1 --config-file configs/coco/instance-segmentation/swin/maskformer2_faster.yaml SOLVER.IMS_PER_BATCH 32
