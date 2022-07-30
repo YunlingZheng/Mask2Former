@@ -391,7 +391,6 @@ class Network_Multi_Path_Infer(nn.Module):
         _, _, H, W = input.size()
         stem = self.stem(input)
 
-        self.path_mask = paths[-1]._str
         # store the last feature map w. corresponding scale of each branch
         outputs8 = [stem] * self._branch
         outputs16 = [stem] * self._branch
