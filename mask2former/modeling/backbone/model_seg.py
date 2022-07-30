@@ -479,7 +479,7 @@ class D2Faster(Network_Multi_Path_Infer, Backbone):
     def __init__(self, cfg, input_shape):      
 
         # ========= 20220511, load fasterseg backbone config directory =========
-        LOAD_PATH = "/home/faster/Downloads/Mask2Former/search-224x448_F12.L16_batch5-20200802-144323"
+        LOAD_PATH = cfg.MODEL.FASTER.PATH_SEARCH
         arch_idx = 1 # the idx for the student network
         state = torch.load(os.path.join(LOAD_PATH, "arch_%d.pt"%arch_idx))
         
@@ -511,7 +511,7 @@ class D2Faster(Network_Multi_Path_Infer, Backbone):
         self.build_structure(last)
 
         # ============= 20220514, load fasterseg pretrained model ==============
-        path = "/home/faster/Downloads/Mask2Former/train-512x1024_student_batch12-20210613-170252"
+        path = cfg.MODEL.FASTER.PATH_PRETRAIN
         partial = torch.load(os.path.join(path, "weights1.pt"))
         state = self.state_dict()
         pretrained_dict = {k: v for k, v in partial.items() if k in state}

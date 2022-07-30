@@ -89,6 +89,11 @@ def add_maskformer2_config(cfg):
     cfg.MODEL.SWIN.OUT_FEATURES = ["res2", "res3", "res4", "res5"]
     cfg.MODEL.SWIN.USE_CHECKPOINT = False
 
+    # FasterSeg backbone
+    cfg.MODEL.FASTER = CN()
+    cfg.MODEL.FASTER.PATH_PRETRAIN = None
+    cfg.MODEL.FASTER.PATH_SEARCH = None
+
     # NOTE: maskformer2 extra configs
     # transformer module
     cfg.MODEL.MASK_FORMER.TRANSFORMER_DECODER_NAME = "MultiScaleMaskedTransformerDecoder"
