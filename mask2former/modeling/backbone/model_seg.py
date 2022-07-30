@@ -344,7 +344,6 @@ class Network_Multi_Path_Infer(nn.Module):
                 pred16.append(outputs16[branch]) ### 20220512
             elif last == 0:
                 pred8.append(outputs8[branch])
-                torch.save(outputs8[branch], self.path_mask+'/last_3_b2.pt')
         # for i in range(len(pred8)):
         #     print("pred8 shape:", pred8[i].shape) # (64, 64, 128), (64, 64, 128) 20220512
         # for i in range(len(pred16)):
@@ -382,7 +381,6 @@ class Network_Multi_Path_Infer(nn.Module):
         features4 = F.interpolate(features4, scale_factor=2, mode='bilinear', align_corners=True)
         # print("shape of features4:", features4.shape)
         pred8 = self.heads8(pred8)
-        torch.save(pred8, self.path_mask+'/last_1.pt')
         if self.training: 
             return pred8, pred16, pred32, embd, features4, features_sem
         else:
@@ -393,7 +391,6 @@ class Network_Multi_Path_Infer(nn.Module):
         _, _, H, W = input.size()
         stem = self.stem(input)
 
-        paths = sorted(Path('mask_feature_plot').iterdir(), key=os.path.getmtime)
         self.path_mask = paths[-1]._str
         # store the last feature map w. corresponding scale of each branch
         outputs8 = [stem] * self._branch
@@ -412,7 +409,6 @@ class Network_Multi_Path_Infer(nn.Module):
                     elif scale == 16: outputs16[branch] = output
                     elif scale == 32: outputs32[branch] = output
         
-        torch.save(outputs8, self.path_mask+'/last_4.pt')
         if self.training:
         # ================= 20220512, load fasterseg backbone ==================
             # for i in range(len(outputs8)): # (32, 64, 128), (64, 64, 128) 20220511
